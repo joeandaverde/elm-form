@@ -7,6 +7,7 @@ import Form.Validate as Validate exposing (Validation)
 import Form.Field
 import Form.Error
 import Form.Tree as Tree
+import Form
 
 
 all : Test
@@ -44,6 +45,34 @@ all =
                                 ]
                                 |> Err
                             )
+        , test "proper error index when chaining multiple validations" <|
+            \_ ->
+                let
+                    validateForm =
+                        (Validate.field "field_name"
+                            Validate.string
+                            |> Validate.andThen (Validate.minLength 4)
+                            |> Validate.andThen (Validate.minLength 5)
+                        )
+
+                    validateFormWorks =
+                        (Validate.field "field_name"
+                            (Validate.string
+                                |> Validate.andThen (Validate.minLength 4)
+                                |> Validate.andThen (Validate.minLength 5)
+                            )
+                        )
+
+                    initialForm =
+                        Form.initial [] validateForm
+
+                    updated =
+                        Form.update validateForm (Form.Input "field_name" Form.Text (Form.Field.String "abcd")) initialForm
+
+                    state =
+                        Form.getFieldAsString "field_name" updated
+                in
+                    Expect.equal (Just (Form.Error.ShorterStringThan 5)) state.liveError
         ]
 
 
